@@ -1,78 +1,7 @@
+#!/usr/bin/env node
 var fs = require("fs");
 var readline = require("readline");
-
-var Trie = function() {
-    var data = {};
-
-    var insert = function(word) {
-        var length = word.length;
-        var temp = data;
-        var curr;
-
-        for (var i = 0; i < length; i++) {
-            curr = word[i];
-
-            if (temp.hasOwnProperty(curr)) {
-                temp = temp[curr];
-            } else {
-                temp[word[i]] = {}
-                temp = temp[word[i]];
-            }
-
-            if (i === word.length - 1) {
-                temp["$"] = true;
-            }
-        }
-    };
-
-    var contains = function(word) {
-        var length = word.length;
-        var temp = data;
-        var curr;
-        for (var i = 0; i < length; i++) {
-            curr = word[i];
-
-            if (temp.hasOwnProperty(curr)) {
-                temp = temp[curr];
-            } else {
-                return false;
-            }
-
-            if (i === word.length - 1) {
-                return temp["$"]
-            }
-
-        }
-    };
-
-    var containsPrefix = function(word) {
-        var length = word.length;
-        var temp = data;
-        var curr;
-        for (var i = 0; i < length; i++) {
-            curr = word[i];
-
-            if (temp.hasOwnProperty(curr)) {
-                temp = temp[curr];
-            } else {
-                return false;
-            }
-
-        }
-        return true;
-    };
-
-    var print = function() {
-        console.log(JSON.stringify(data));
-    };
-
-    return {
-        insert: insert,
-        contains: contains,
-        containsPrefix: containsPrefix,
-        print: print
-    };
-};
+var Trie = require("./trie");
 
 var DICT = Trie();
 
@@ -108,7 +37,7 @@ var multiplesToDouble = function(wordArray) {
 var mapVowel = function(arr, vowel) {
     var returnVal = [];
     var temp = arr.slice();
-    if (temp.length === 0 ) temp = [""];
+    if (temp.length === 0 ) temp = [];
 
     temp.forEach(function(str) {
         var newPrefix = str + vowel
@@ -145,20 +74,86 @@ var vowelPermutations = function(wordArray) {
     return permutations;
 };
 
-var randomIndex = function(len) {
-    return Math.floor(Math.random() * len);
+var swapIndex = function(wordArray, char, index) {
+    var arr = wordArray.slice();
+    arr[index] = char;
+    return arr.join("");
 };
 
-var uppercaseAtIndex = function(arr, i) {
-    arr[i] = arr[i].toUpperCase();
+var singleVowelEdit = function(wordArray) {
+    var r = new RegExp("[aeiou]");
+    var length = wordArray.length;
+    var edits = [];
+
+    for (var index = 0; index < length; index++) {
+        if (r.test(wordArray[index])) {
+            edits.push(swapIndex(wordArray, "a", index));
+            edits.push(swapIndex(wordArray, "e", index));
+            edits.push(swapIndex(wordArray, "i", index));
+            edits.push(swapIndex(wordArray, "o", index));
+            edits.push(swapIndex(wordArray, "u", index));
+        }
+    }
+
+    return edits;
 };
 
-var repeatLetterAtIndex = function(arr, i) {
-    arr[i] = arr[i] + arr[i];
+var attempt = function(word) {
+    if (DICT.contains(word)) {
+        return true
+    }
 };
+
+var correction = function(word) {
+    var normalized = word.toLowerCase();
+    if (attempt(normalized)) {
+        return normalized;
+    }
+
+    var noDoubles = multiplesToSingle(normalized);
+
+    if (attempt(noDoubles.join(""))) {
+        return noDoubles.join("");
+    }
+
+    var onlyDoubles = multiplesToDouble(normalized);
+
+    if (attempt(onlyDoubles.join(""))) {
+        return onlyDoubles.join("");
+    }
+
+    var p1 = singleVowelEdit(normalized.split(""));
+    var p2 = singleVowelEdit(noDoubles)
+    var finalP = p1.concat(p2);
+
+    for (var i = 0; i < finalP.length; i++) {
+        if (attempt(finalP[i])) {
+            return finalP[i];
+        }
+    }
+
+
+    var p3 = vowelPermutations(normalized);
+    var p4 = vowelPermutations(noDoubles);
+
+    var finalP2 = p3.concat(p4);
+
+    for (var i = 0; i < finalP2.length; i++) {
+        if (attempt(finalP2[i])) {
+            return finalP2[i];
+        }
+    }
+
+    return "NO CORRECTION";
+};
+
 
 var readDict = readline.createInterface({
     input: fs.createReadStream("/usr/share/dict/words")
+});
+
+readDict.on("line", function(line) {
+    DICT.insert(line.toLowerCase());
 });
 
 var askForWord = readline.createInterface({
@@ -166,59 +161,31 @@ var askForWord = readline.createInterface({
     output: process.stdout
 });
 
-readDict.on("line", function(line) {
-    DICT.insert(line.toLowerCase());
-});
-
-readDict.on("close", function() {
-    start()
-});
-
-var attempt = function(word) {
-    if (DICT.contains(word)) {
-        console.log(word);
-        return true
-    }
-};
+var LOADED = false;
+var buffered = [];
 
 var start = function() {
-    askForWord.question("> ", function(answer) {
-        var normalized = answer.toLowerCase();
-        if (attempt(normalized)) {
-            start();
-            return;
-        }
-
-        var noDoubles = multiplesToSingle(normalized);
-
-        if (attempt(noDoubles.join(""))) {
-            start();
-            return;
-        }
-
-        var onlyDoubles = multiplesToDouble(normalized);
-
-        if (attempt(onlyDoubles.join(""))) {
-            start();
-            return;
-        }
-
-        var p1 = vowelPermutations(normalized);
-        var p2 = vowelPermutations(noDoubles);
-
-        var finalP = p1.concat(p2);
-
-        for (var i = 0; i < finalP.length; i++) {
-            if (attempt(finalP[i])) {
-                start();
-                return;
-            }
-        }
-
-        console.log("NO CORRECTION");
-        start();
-    });
+    askForWord.question("> ", respond);
 };
 
+var respond = function(answer) {
+    var words = answer.split(/\s+/).filter(Boolean);
 
+    if (LOADED) {
+        words.forEach(function(w) {
+            console.log(correction(w));
+        });
+    } else {
+        buffered = buffered.concat(words);
+    }
+
+    start();
+};
+
+start();
+
+readDict.on("close", function() {
+    LOADED = true;
+    respond(buffered.join(" "));
+});
 

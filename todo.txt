@@ -1,7 +1,0 @@
-Order the vowel edits? Or make a function for one change, then two?
-
-Create the testing program
-1) generate misspellings
-2) pipe misspellings into the program
-
-
