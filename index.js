@@ -39,16 +39,17 @@ wordCount.on("line", function(line) {
         var permutations = Edits.edits2(wordError);
         var best = pickBest(permutations[0]);
         if (best === correct) {
-            console.log("\nCorrect: Picked:", best, " For: ", wordError);
+            //console.log("\nCorrect: Picked:", best, " For: ", wordError);
             return;
         }
 
         best = pickBest(permutations[1]);
 
         if (best === correct) {
-            console.log("\nCorrect: Picked:", best, " For: ", wordError);
+            //console.log("\nCorrect: Picked:", best, " For: ", wordError);
         } else {
-            console.log("\n", wordError, "  Picked: ", best, " For: ", correct);
+            //console.log("\n", wordError, "  Picked: ", best, " For: ", correct);
+            console.log(correct, ":", wordError, ":", best);
         }
     });
 });
